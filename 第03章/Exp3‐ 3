@@ -1,1 +1,165 @@
+//CreateHDFSFile.java
+package hadoop.ch03.yjy17124080139;
 
+import org.apache.hadoop.conf.*;
+import org.apache.hadoop.fs.*;
+
+import java.net.URI;
+
+public class CreateHDFSFile {
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        // 配置 NameNode 地址
+        URI uri = new URI("hdfs://192.168.30.130:8020");
+        // 指定用户名 , 获取 FileSystem 对象
+        FileSystem fs = FileSystem.get(uri, conf, "hadoop");
+        //定义文件路径
+        Path dfs = new Path("/17124080139/yjy/test2.txt");
+        FSDataOutputStream os = fs.create(dfs, true);
+        //往文件写入信息
+        //dfs.writeBytes("hello,hdfs!");
+        os.writeBytes("hello,world!--yjy");
+        // 关闭流
+        os.close();
+        // 不需要再操作 FileSystem 了，关闭
+        fs.close();
+    }
+}
+
+//DeleteHDFSFile.java
+package hadoop.ch03.yjy17124080139;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import java.net.URI;
+
+public class DeleteHDFSFile {
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        URI uri = new URI("hdfs://192.168.30.130:8020");
+        FileSystem fs = FileSystem.get(uri, conf, "hadoop");
+        Path path = new Path("/17124080139/yjy/test2.txt");
+        fs.delete(path);
+        fs.close();
+
+        System.out.println("删除成功!");
+    }
+
+}
+
+//DownloadHDFSFile.java
+package hadoop.ch03.yjy17124080139;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+
+import java.net.URI;
+
+public class DownloadHDFSFile {
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        URI uri = new URI("hdfs://192.168.30.130:8020");
+        FileSystem fs = FileSystem.get(uri, conf, "hadoop");
+        Path dfs = new Path("/17124080139/yjy/test5.txt");
+        FSDataOutputStream os = fs.create(dfs, true);
+        os.writeBytes("Hello,World!");
+        os.close();
+        Path src = new Path("/17124080139/yjy/test5.txt");
+        Path dst = new Path("D:\\read.txt");
+        fs.copyToLocalFile(false,src,dst,true);
+        fs.close();
+
+        System.out.println("下载成功!");
+    }
+}
+
+//ReadHDFSFile.java
+package hadoop.ch03.yjy17124080139;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
+
+import java.net.URI;
+
+public class ReadHDFSFile {
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        //配置 NameNode 地址，具体根据你的 NameNode IP 配置
+        URI uri = new URI("hdfs://192.168.30.130:8020");
+        //指定用户名，获取FileSystem对象
+        FileSystem fs = FileSystem.get(uri, conf, "hadoop");
+        Path dfs = new Path("/17124080139/yjy/test5.txt");
+        FSDataInputStream fis =fs.open(dfs);
+        IOUtils.copyBytes(fis,System.out,4096,true);
+        //System.out.println(res);
+
+    }
+}
+
+//ReadHDFSFileAttr.java
+package hadoop.ch03.yjy17124080139;
+
+import com.google.inject.internal.util.$Lists;
+import com.google.inject.internal.util.$ToStringBuilder;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.*;
+
+import java.lang.reflect.Type;
+import java.net.URI;
+
+public class ReadHDFSFileAttr {
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        URI uri = new URI("hdfs://192.168.30.130:8020");
+        FileSystem fs = FileSystem.get(uri, conf, "hadoop");
+        Path dfs = new Path("/17124080139/yjy/test5.txt");
+        String st = "17124080139";
+        byte[] b =st.getBytes();
+        fs.setXAttr(dfs,"user.id",b);
+        System.out.println("属性设置成功");
+        System.out.println("----------------分割线------------------");
+        fs.getXAttr(dfs,"user.id");
+        String res =new String(fs.getXAttr(dfs,"user.id"));
+        System.out.println("----------------分割线------------------");
+        System.out.println(res);
+        
+
+
+    }
+}
+
+//UploadHDFSFile.java
+package hadoop.ch03.yjy17124080139;
+
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
+
+public class UploadHDFSFile {
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        URI uri = new URI("hdfs://192.168.30.130:8020");
+        FileSystem fs = FileSystem.get(uri, conf, "hadoop");
+
+        //Local file
+        Path src = new Path("D:\\test4.txt");
+        //HDFS file
+        Path dst = new Path("/17124080139/yjy/test4.txt");
+        fs.copyFromLocalFile(src,dst);
+        fs.close();
+
+        System.out.println("Upload Successfully!");
+    }
+}
