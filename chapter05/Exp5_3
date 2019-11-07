@@ -1,0 +1,173 @@
+//Sold.java
+package Exp5v3.yjy139;
+
+import org.apache.hadoop.io.Writable;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+public class Sold implements Writable {
+    //字段名 prod_id,cust_id,time,channel_id,promo_id,quantity_sold,amount_sold
+    //数据类型：Int，Int，Date， Int，Int ，Int ,float(10,2),
+    //数据: 13, 987, 1998/1/10, 3, 999,1, 1232.16
+//由以上定义变量
+    private int prod_id;
+    private int cust_id;
+    private String time;
+    private int channel_id;
+    private int promo_id;
+    private int quantity_sold;
+    private float amount_sold;//奖金
+    //序列化方法：将java对象转化为可跨机器传输数据流（二进制串/字节）的一种技术
+    public void write(DataOutput out) throws IOException {
+        out.writeInt(this.prod_id);
+        out.writeInt(this.cust_id);
+        out.writeUTF(this.time);
+        out.writeInt(this.channel_id);
+        out.writeInt(this.promo_id);
+        out.writeInt(this.quantity_sold);
+        out.writeFloat(this.amount_sold);
+    }
+    //反序列化方法：将可跨机器传输数据流（二进制串）转化为java对象的一种技术
+    public void readFields(DataInput in) throws IOException {
+        this.prod_id = in.readInt();
+        this.cust_id = in.readInt();
+        this.time = in.readUTF();
+        this.channel_id = in.readInt();
+        this.promo_id = in.readInt();
+        this.quantity_sold = in.readInt();
+        this.amount_sold = in.readFloat();
+    }
+    public int getProd_id() {
+        return prod_id;
+    }
+    public void setProd_id(int prod_id) {
+        this.prod_id = prod_id;
+    }
+    public int getCust_id() {
+        return cust_id;
+    }
+    public void setCust_id(int cust_id) {
+        this.cust_id = cust_id;
+    }
+    public String getTime() {
+        return time;
+    }
+    public void setTime(String time) {
+        this.time = time;
+    }
+    public int getChannel_id() {
+        return channel_id;
+    }
+    public void setChannel_id(int channel_id) {
+        this.channel_id = channel_id;
+    }
+    public int getPromo_id() {
+        return promo_id;
+    }
+    public void setPromo_id(int promo_id) {
+        this.promo_id = promo_id;
+    }
+    public int getQuantity_sold() {
+        return quantity_sold;
+    }
+    public void setQuantity_sold(int quantity_sold) {
+        this.quantity_sold = quantity_sold;
+    }
+    public float getAmount_sold() {
+        return amount_sold;
+    }
+    public void setAmount_sold(float amount_sold) {
+        this.amount_sold = amount_sold;
+    }
+}
+
+
+//SoldMain.java
+package Exp5v3.yjy139;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class SoldMain {
+    public static void main(String[] args) throws Exception {
+        //1. 创建一个job和任务入口(指定主类)
+        Job job = Job.getInstance(new Configuration());
+        job.setJarByClass(SoldMain.class);
+        //2. 指定job的mapper和输出的类型<k2 v2>
+        job.setMapperClass(SoldMapper.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(Sold.class);
+        //3. 指定job的reducer和输出的类型<k4  v4>
+        job.setReducerClass(SoldReduce.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+        //4. 指定job的输入和输出路径
+        FileInputFormat.setInputPaths(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        //5. 执行job
+        job.waitForCompletion(true);
+    }
+}
+
+
+//SoldMapper.java
+package Exp5v3.yjy139;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+
+public class SoldMapper extends Mapper<LongWritable, Text, Text, Sold> {
+    @Override
+    protected void map(LongWritable k1, Text v1,
+                       Context context)
+            throws IOException, InterruptedException {
+        //字段名 prod_id,cust_id,time,channel_id,promo_id,quantity_sold,amount_sold
+        //数据类型：Int，Int，Date， Int，Int ，Int ,float(10,2),
+        //数据: 13,987,1998-01-10,3,999,1,1232.16
+        String data = v1.toString();
+        String[] words = data.split(",");
+//数据: t1=987,1998-01-10,3,999,1,1232.16
+        String t1 = StringUtils.substringAfter(data, ",");
+//数据: t2=1998-01-10,3,999,1,1232.16
+        String t2 = StringUtils.substringAfter(t1, ",");
+//取年份为偏移量，数据: words2[0]=1998，words2[1]=01，words2[2]=10,3,999,1,1232.16
+        String[] words2 = t2.split("-");
+//        StringUtils.substringAfter("dskeabcedeh", "e");
+//        /*结果是：abcedeh*/
+        Sold sold = new Sold();
+        sold.setTime(words[2]);//数组word[]
+        sold.setQuantity_sold(Integer.parseInt(words[5]));
+        sold.setAmount_sold(Float.valueOf(words[6]));
+        context.write(new Text(words2[0]), sold);//数组word2[],word2[0]代表年份作为k2
+    }
+}
+
+
+//SoldReduce.java
+package Exp5v3.yjy139;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+import java.io.IOException;
+
+public class SoldReduce extends Reducer<Text, Sold, Text, Text> {
+    protected void reduce(Text k3, Iterable<Sold> v3, Context context) throws IOException, InterruptedException {
+        int total1 = 0;
+        float total2 = 0;
+        for (Sold sold : v3) {
+            total1 = total1 + sold.getQuantity_sold();
+            total2 = total2 + sold.getAmount_sold();
+        }
+        String total = "销售笔数:" + Integer.toString(total1) + "," + "销售总额:" + Float.toString(total2);
+        context.write(k3, new Text(total));
+    }
+}
