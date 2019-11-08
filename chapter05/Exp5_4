@@ -1,0 +1,247 @@
+//ClearMain.java
+package Exp.yjyv139;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class ClearMain
+{
+    public static void main( String[] args ) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf);
+        job.setJarByClass(App.class);
+        job.setMapperClass(ClearMapper.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(NullWritable.class);
+        job.setOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(NullWritable.class);
+        FileInputFormat.setInputPaths(job,new Path(args[0]));
+        FileOutputFormat.setOutputPath(job,new Path(args[1]));
+        job.waitForCompletion(true);
+    }
+}
+
+
+//ClearMapper.java
+package Exp.yjyv139;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+import java.io.IOException;
+
+public class ClearMapper extends Mapper<LongWritable,Text,Text,NullWritable> {
+    @Override
+    protected void setup(Context context) throws IOException, InterruptedException {
+        super.setup(context);
+    }
+    @Override
+    protected void map(LongWritable k1, Text v1, Context context) throws IOException, InterruptedException {
+        String data = new String(v1.getBytes(), 0, v1.getLength(), "utf8");
+        String words[] = data.split("\\s+");
+        if (words.length != 6) {
+            return;
+        }
+        String strs = "[·`……*_=+【\\[\\]】｛{}｝\\\\|、\\\\\\\\;‘'“”\\\"，《<。》>、?,]";
+        String newData1 = data.replaceAll(strs, "");
+        String newData = newData1.replaceAll("\\s+", ",");
+        context.write(new Text(newData), NullWritable.get());
+    }
+    @Override
+    protected void cleanup(Context context) throws IOException, InterruptedException {
+        super.cleanup(context);
+    }
+}
+
+---------------------------------------------------------------------------------------------------------------------------
+
+//Data.java
+package Exp.v139;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import org.apache.hadoop.io.Writable;
+
+public class Data implements Writable {
+    //00:00:06	9441949621471399	[韩国饰品]	1 1	www.uczx.com/
+    //时间 用户id 查询词 排名 顺序 url
+    //由以上定义变量
+    private String date;
+    private String userid;
+    private String word;
+    //  private String c;
+    private int rank;
+    private int order;
+    private String url;
+    @Override
+    public String toString() {
+        return "Data{" +
+                "date='" + date + '\'' +
+                ", userid='" + userid + '\'' +
+                ", word='" + word + '\'' +
+                ", rank=" + rank +
+                ", order=" + order +
+                ", url='" + url + '\'' +
+                '}';
+    }
+    @Override
+    public void write(DataOutput out) throws IOException {
+        out.writeUTF(this.date);
+        out.writeUTF(this.userid);
+        out.writeUTF(this.word);
+        out.writeInt(this.rank);
+        out.writeInt(this.order);
+        out.writeUTF(this.url);
+    }
+    @Override
+    public void readFields(DataInput in) throws IOException {
+        this.date = in.readUTF();
+        this.userid = in.readUTF();
+        this.word = in.readUTF();
+        this.rank = in.readInt();
+        this.order = in.readInt();
+        this.url = in.readUTF();
+    }
+    public String getDate() {
+        return date;
+    }
+    public void setDate(String date) {
+        this.date = date;
+    }
+    public String getUserid() {
+        return userid;
+    }
+    public void setUserid(String userid) {
+        this.userid = userid;
+    }
+    public String getWord() {
+        return word;
+    }
+    public void setWord(String word) {
+        this.word = word;
+    }
+    public int getRank() {
+        return rank;
+    }
+    public void setRank(int rank) {
+        this.rank = rank;
+    }
+    public int getOrder() {
+        return order;
+    }
+    public void setOrder(int order) {
+        this.order = order;
+    }
+    public String getUrl() {
+        return url;
+    }
+    public void setUrl(String url) {
+        this.url = url;
+    }
+}
+
+
+//SouGouMain.java
+package Exp.v139;
+
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class SouGouMain {
+    public static void main(String[] args) throws Exception {
+        Job job = Job.getInstance();
+        job.setJarByClass(SouGouMain.class);
+        job.setMapperClass(SouGouMapper.class);
+        job.setMapOutputKeyClass(NullWritable.class);
+        job.setMapOutputValueClass(Data.class);
+        job.setPartitionerClass(SouGouPartitioner.class);
+        job.setNumReduceTasks(2);
+        job.setReducerClass(SouGouReducer.class);
+        job.setOutputKeyClass(NullWritable.class);
+        job.setOutputValueClass(Text.class);
+        FileInputFormat.setInputPaths(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        job.waitForCompletion(true);
+    }
+}
+
+
+//SouGouMapper.java
+package Exp.v139;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+import java.io.IOException;
+
+public class SouGouMapper extends Mapper< LongWritable, Text, NullWritable, Data> {
+    @Override
+    protected void map(LongWritable k1, Text v1,
+                       Context context)
+            throws IOException, InterruptedException {
+        String data = v1.toString();
+        String[] words = data.split(",");
+        Data dt = new Data();
+        //00:00:06	9441949621471399	[韩国饰品]	1 1	www.uczx.com/
+        dt.setDate(words[0]);
+        dt.setUserid(words[1]);
+        dt.setWord(words[2]);
+        dt.setRank(Integer.parseInt(words[3]));
+        dt.setOrder(Integer.parseInt(words[4]));
+        dt.setUrl(words[5]);
+        NullWritable k2 = NullWritable.get();
+        context.write(k2, dt);
+    }
+}
+
+
+//SouGouPartitioner.java
+package Exp.v139;
+
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapreduce.Partitioner;
+
+public class SouGouPartitioner extends Partitioner<NullWritable, Data>{
+    @Override
+    public int getPartition(NullWritable k2, Data v2, int numPartitioner) {
+        if(v2.getRank() == 2 && v2.getOrder() == 1) {
+            return 1%numPartitioner;
+        }else {
+            return 2%numPartitioner;
+        }
+    }
+}
+
+
+//SouGouReducer.java
+package Exp.v139;
+
+import java.io.IOException;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+public class SouGouReducer extends Reducer<NullWritable,Data,NullWritable,Text> {
+    @Override
+    protected void reduce(NullWritable k3, Iterable<Data> v3,
+                          Context context) throws IOException, InterruptedException {
+        String line=null;
+        for (Data v1 : v3) {
+            line = v1.toString();
+            context.write(k3, new Text(line));
+        }
+    }
+}
